@@ -1,28 +1,25 @@
+// CONSIDER ADDING IMGUI WIDGETS
+#define _CRT_SECURE_NO_WARNINGS // because printf is "too dangerous"
+
 #include "Shader.hpp"
 #include "Program.hpp"
 #include "TextureLoader.hpp"
 
-const unsigned GL_BASE_VERSION = 4;
-const unsigned GL_SUB_VERSION = 1;
-const unsigned WINDOW_WIDTH = 1280;
-const unsigned WINDOW_HEIGHT = 720;
-const char * WINDOW_NAME = "Ocean OpenGL by Stan Fortoński";
+#include "renderer.h"
+
 const float NEAR_PLANE = 0.1f;
 const float FAR_PLANE = 500.0f;
 const float CAM_FOV = 45.0f;
-const unsigned SAMPLES = 8;
-const unsigned TEXTURES_AMOUNT = 13;
+const unsigned NUM_TEXTURES = 13;
 const unsigned TESS_LEVEL = 1;
 const float DEPTH = 0.11f;
 
-GLFWwindow * window = nullptr;
-Program program;
 glm::mat4 projection;
 unsigned VAO = 0;
 float interpolateFactor = 0.0f;
 double deltaTime = 0.0;
-unsigned heightMap[TEXTURES_AMOUNT];
-unsigned normalMap[TEXTURES_AMOUNT];
+unsigned heightMap[NUM_TEXTURES];
+unsigned normalMap[NUM_TEXTURES];
 unsigned waterTex;
 unsigned wavesNormalMap;
 unsigned wavesHeightMap;
@@ -30,205 +27,178 @@ unsigned firstIndex = 0;
 unsigned lastIndex = 1;
 bool rotate = false;
 
-void initGL();
-void initProgram();
-void resizeCallback(GLFWwindow* window, int width, int height);
-void setWindowSize(int width, int height);
-void processInput(GLFWwindow * window);
-void renderWater();
-
 int main()
 {
-  try
-  {
-    initGL();
-    initProgram();
-    glGenVertexArrays(1, &VAO);
-    glGenTextures(TEXTURES_AMOUNT, heightMap);
-    glGenTextures(TEXTURES_AMOUNT, normalMap);
-    glGenTextures(1, &waterTex);
+	Window window = {};
+	Keyboard keys = {};
 
-    for (unsigned i = 0; i < TEXTURES_AMOUNT; ++i)
-    {
-      std::string num = std::to_string(i+1);
+	init_window(&window, 1280, 720, "GL Waves");
+	init_keyboard(&keys);
 
-      TextureLoader::loadTexture(heightMap[i], "textures/heights/"+num+".png");
-      TextureLoader::loadTexture(normalMap[i], "textures/normals/"+num+".png");
-    }
+	projection = glm::perspective(glm::radians(CAM_FOV), (float)1280 / (float)720, NEAR_PLANE, FAR_PLANE);
 
-    TextureLoader::loadTexture(waterTex, "textures/water.jpg");
-    TextureLoader::loadTexture(wavesNormalMap, "textures/wavesNormal.jpg");
-    TextureLoader::loadTexture(wavesHeightMap, "textures/wavesHeight.jpg");
+	//glfwSetFramebufferSizeCallback(window, resizeCallback);
 
-    glm::mat4 model = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f));
-    glm::vec3 viewPos = glm::vec3(1.0f);
-    glm::mat4 view = glm::lookAt(
-      viewPos,
-      glm::vec3(0.0f, 0.0f,  0.0f),
-      glm::vec3(0.0f, 1.0f,  0.0f)
-    );
+	Program program;
+	program.create();
+	program.attachShader(Shader2::createVertexShader("assets/shaders/water.vert"));
+	program.attachShader(Shader2::createTessalationControlShader("assets/shaders/water_tess_control.glsl"));
+	program.attachShader(Shader2::createTessalationEvaluationShader("assets/shaders/water_tess_eval.glsl"));
+	program.attachShader(Shader2::createFragmentShader("assets/shaders/water.frag"));
+	program.link();
 
-    program.use();
-    program.setVec3("light.direction", glm::vec3(0.0, -1.0, 0.0));
-    program.setVec3("light.ambient", glm::vec3(0.15, 0.15, 0.15));
-    program.setVec3("light.diffuse", glm::vec3(0.75, 0.75, 0.75));
-    program.setVec3("light.specular", glm::vec3(1.0, 1.0, 1.0));
-    program.setFloat("interpolateFactor", interpolateFactor);
-    program.setFloat("depth", DEPTH);
-    program.setInt("tessLevel", TESS_LEVEL);
+	glGenVertexArrays(1, &VAO);
+	glGenTextures(NUM_TEXTURES, heightMap);
+	glGenTextures(NUM_TEXTURES, normalMap);
+	glGenTextures(1, &waterTex);
 
-    double lastFrame = 0;
-    double actualFrame = 0;
-    float radius = 75.0f;
+	for (int i = 0; i < NUM_TEXTURES; ++i)
+	{
+		char heightmap_filename[256] = {};
+		sprintf(heightmap_filename, "assets/textures/heights/%d.png", i+1);
+		TextureLoader::loadTexture(heightMap[i], std::string(heightmap_filename));
 
-    float camX = sin(glfwGetTime()*0.5) * radius,
-          camZ = cos(glfwGetTime()*0.5) * radius;
-    viewPos = glm::vec3(camX, 50.0f, camZ);
+		char normalmap_filename[256] = {};
+		sprintf(normalmap_filename, "assets/textures/normals/%d.png", i+1);
+		TextureLoader::loadTexture(normalMap[i], std::string(normalmap_filename));
+	}
 
-    while (!glfwWindowShouldClose(window))
-    {
-      processInput(window);
+	TextureLoader::loadTexture(waterTex, "assets/textures/water.jpg");
+	TextureLoader::loadTexture(wavesNormalMap, "assets/textures/wavesNormal.jpg");
+	TextureLoader::loadTexture(wavesHeightMap, "assets/textures/wavesHeight.jpg");
 
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      glClearColor(0, 0, 0, 1);
+	glm::mat4 model = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f));
+	glm::vec3 viewPos = glm::vec3(1.0f);
+	glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-      actualFrame = glfwGetTime();
-      deltaTime = actualFrame - lastFrame;
-      lastFrame = actualFrame;
+	program.use();
+	program.setVec3("light.direction"    , glm::vec3(0.0, -1.0, 0.0));
+	program.setVec3("light.ambient"      , glm::vec3(0.15, 0.15, 0.15));
+	program.setVec3("light.diffuse"      , glm::vec3(0.75, 0.75, 0.75));
+	program.setVec3("light.specular"     , glm::vec3(1.0, 1.0, 1.0));
+	program.setFloat("interpolateFactor" , interpolateFactor);
+	program.setFloat("depth", DEPTH);
+	program.setInt("tessLevel", TESS_LEVEL);
 
-      if (rotate)
-      {
-        radius = 60.0f;
-        float camX = sin(glfwGetTime()*0.5) * radius,
-              camZ = cos(glfwGetTime()*0.5) * radius;
-        viewPos = glm::vec3(camX, 30.0f, camZ);
-      }
+	double lastFrame = 0;
+	double actualFrame = 0;
+	float radius = 75.0f;
 
-      view = glm::lookAt(
-        viewPos,
-        glm::vec3(0.0f, 0.0f,  0.0f),
-        glm::vec3(0.0f, 1.0f,  0.0f)
-      );
+	float camX = sin(glfwGetTime() * 0.5) * radius;
+	float camZ = cos(glfwGetTime() * 0.5) * radius;
+	viewPos = glm::vec3(camX, 50.0f, camZ);
 
-      program.use();
-      program.setMat4("model", model);
-      program.setMat4("mvp", projection * view * model);
-      program.setVec3("viewPos", viewPos);
-      renderWater();
+	while (!glfwWindowShouldClose(window.instance))
+	{
+		update_window(window);
+		update_keyboard(&keys, window);
 
-      glfwPollEvents();
-      glfwSwapBuffers(window);
-    }
-  }
-  catch(std::exception & e)
-  {
-    std::cerr<<e.what()<<std::endl;
-    std::cin.get();
-  }
-  glDeleteVertexArrays(1, &VAO);
-  glDeleteTextures(TEXTURES_AMOUNT, heightMap);
-  glDeleteTextures(TEXTURES_AMOUNT, normalMap);
-  glDeleteTextures(1, &waterTex);
-  glDeleteTextures(1, &wavesHeightMap);
-  glDeleteTextures(1, &wavesNormalMap);
-  glfwTerminate();
-  return 0;
-}
+		// controls
+		if (keys.ESC.is_pressed) glfwSetWindowShouldClose(window.instance, true);
+		if (keys.P.is_pressed) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		if (keys.O.is_pressed) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		if (keys.R.is_pressed) rotate = true;
+		if (keys.T.is_pressed) rotate = false;
 
-void renderWater()
-{
-  program.use();
-  program.setInt("heightMap1", 0);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, heightMap[firstIndex]);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0, 0, 0, 1);
 
-  program.setInt("heightMap2", 1);
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, heightMap[lastIndex]);
+		actualFrame = glfwGetTime();
+		deltaTime = actualFrame - lastFrame;
+		lastFrame = actualFrame;
 
-  program.setInt("normalMap1", 2);
-  glActiveTexture(GL_TEXTURE2);
-  glBindTexture(GL_TEXTURE_2D, normalMap[firstIndex]);
+		if (rotate)
+		{
+			radius = 60.0f;
+			float camX = sin(glfwGetTime() * 0.5) * radius;
+			float camZ = cos(glfwGetTime() * 0.5) * radius;
+			viewPos = glm::vec3(camX, 30.0f, camZ);
+		}
 
-  program.setInt("normalMap2", 3);
-  glActiveTexture(GL_TEXTURE3);
-  glBindTexture(GL_TEXTURE_2D, normalMap[lastIndex]);
+		view = glm::lookAt( viewPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-  program.setInt("water", 4);
-  glActiveTexture(GL_TEXTURE4);
-  glBindTexture(GL_TEXTURE_2D, waterTex);
+		program.use();
+		program.setMat4("model", model);
+		program.setMat4("mvp", projection * view * model);
+		program.setVec3("viewPos", viewPos);
+		// This section used to be renderWater();
+		{
+			program.use();
+			program.setInt("heightMap1", 0);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, heightMap[firstIndex]);
 
-  program.setInt("wavesHeightMap", 5);
-  glActiveTexture(GL_TEXTURE5);
-  glBindTexture(GL_TEXTURE_2D, wavesHeightMap);
+			program.setInt("heightMap2", 1);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, heightMap[lastIndex]);
 
-  program.setInt("wavesNormalMap", 6);
-  glActiveTexture(GL_TEXTURE6);
-  glBindTexture(GL_TEXTURE_2D, wavesNormalMap);
+			program.setInt("normalMap1", 2);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, normalMap[firstIndex]);
 
-  if (interpolateFactor >= 1)
-  {
-    interpolateFactor = 0.0f;
-    if (lastIndex == TEXTURES_AMOUNT-1)
-    {
-      firstIndex = 0;
-      lastIndex = 1;
-    }
-    else
-    {
-      ++firstIndex;
-      ++lastIndex;
-    }
-  }
-  else
-  {
-    interpolateFactor += 0.4 * deltaTime;
-    program.setFloat("interpolateFactor", interpolateFactor);
-  }
+			program.setInt("normalMap2", 3);
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, normalMap[lastIndex]);
 
-  static float offset = 0.0f;
-  if (offset >= INT_MAX-2)
-    offset = 0;
-  offset += 0.2 * deltaTime;
-  program.setFloat("wavesOffset", offset);
+			program.setInt("water", 4);
+			glActiveTexture(GL_TEXTURE4);
+			glBindTexture(GL_TEXTURE_2D, waterTex);
 
-  glBindVertexArray(VAO);
-  glPatchParameteri(GL_PATCH_VERTICES, 4);
-  glDrawArraysInstanced(GL_PATCHES, 0, 4, 64*64);
-  glBindVertexArray(0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-}
+			program.setInt("wavesHeightMap", 5);
+			glActiveTexture(GL_TEXTURE5);
+			glBindTexture(GL_TEXTURE_2D, wavesHeightMap);
 
-void initGL()
-{
-  glfwInit();
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GL_BASE_VERSION);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GL_SUB_VERSION);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  glfwWindowHint(GLFW_SAMPLES, SAMPLES);
+			program.setInt("wavesNormalMap", 6);
+			glActiveTexture(GL_TEXTURE6);
+			glBindTexture(GL_TEXTURE_2D, wavesNormalMap);
 
-  if (!(window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_NAME, nullptr, nullptr)))
-    throw std::runtime_error("Can't create window.\n");
-  glfwMakeContextCurrent(window);
-  glfwSetFramebufferSizeCallback(window, resizeCallback);
+			if (interpolateFactor >= 1)
+			{
+				interpolateFactor = 0.0f;
+				if (lastIndex == NUM_TEXTURES - 1)
+				{
+					firstIndex = 0;
+					lastIndex = 1;
+				}
+				else
+				{
+					++firstIndex;
+					++lastIndex;
+				}
+			}
+			else
+			{
+				interpolateFactor += 0.4 * deltaTime;
+				program.setFloat("interpolateFactor", interpolateFactor);
+			}
 
-  glewExperimental = GL_TRUE;
-  if (glewInit() != GLEW_OK)
-    throw std::runtime_error("Can't init OpenGL.\n");
-  setWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+			static float offset = 0.0f;
+			if (offset >= INT_MAX - 2)
+			{
+				offset = 0;
+			}
+			offset += 0.2 * deltaTime;
+			program.setFloat("wavesOffset", offset);
 
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_MULTISAMPLE);
-}
+			glBindVertexArray(VAO);
+			glPatchParameteri(GL_PATCH_VERTICES, 4);
+			glDrawArraysInstanced(GL_PATCHES, 0, 4, 64 * 64);
+			glBindVertexArray(0);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
 
-void initProgram()
-{
-  program.create();
-  program.attachShader(Shader::createVertexShader("shaders/water-vert.vs"));
-  program.attachShader(Shader::createTessalationControlShader("shaders/water-tess-control.glsl"));
-  program.attachShader(Shader::createTessalationEvaluationShader("shaders/water-tess-eval.glsl"));
-  program.attachShader(Shader::createFragmentShader("shaders/water-frag.fs"));
-  program.link();
+		glfwPollEvents();
+		glfwSwapBuffers(window.instance);
+	}
+
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteTextures(NUM_TEXTURES, heightMap);
+	glDeleteTextures(NUM_TEXTURES, normalMap);
+	glDeleteTextures(1, &waterTex);
+	glDeleteTextures(1, &wavesHeightMap);
+	glDeleteTextures(1, &wavesNormalMap);
+	glfwTerminate();
+	return 0;
 }
 
 void resizeCallback(GLFWwindow* window, int width, int height)
@@ -240,20 +210,4 @@ void setWindowSize(int width, int height)
 {
   projection = glm::perspective(glm::radians(CAM_FOV), (float)width/(float)height, NEAR_PLANE, FAR_PLANE);
   glViewport(0, 0, width, height);
-}
-
-void processInput(GLFWwindow * window)
-{
-  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, true);
-
-  if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  else if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-  else if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
-    rotate = true;
-  else if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-    rotate = false;
 }

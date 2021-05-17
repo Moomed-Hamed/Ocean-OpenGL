@@ -1,9 +1,17 @@
+
+
+#include <sstream>
+#include <fstream>
+#define _CRT_SECURE_NO_WARNINGS // because printf is "too dangerous"
+
+/* ---- OLD SHADER ----*/
+
 #ifndef SHADER_HPP
 #define SHADER_HPP 1
 
 #include "intermediary.h"
 
-class Shader
+class Shader2
 {
   unsigned shaderId;
   GLenum type;
@@ -11,36 +19,36 @@ class Shader
   std::string getSource(const std::string & fileName) const;
   std::string getCompileMessageErrorAndClear() const;
 
-  Shader(const std::string & fileName, GLenum t);
+  Shader2(const std::string & fileName, GLenum t);
 public:
-  static Shader createVertexShader(const std::string & fileName)
+  static Shader2 createVertexShader(const std::string & fileName)
   {
-    return Shader(fileName, GL_VERTEX_SHADER);
+    return Shader2(fileName, GL_VERTEX_SHADER);
   }
 
-  static Shader createFragmentShader(const std::string & fileName)
+  static Shader2 createFragmentShader(const std::string & fileName)
   {
-    return Shader(fileName, GL_FRAGMENT_SHADER);
+    return Shader2(fileName, GL_FRAGMENT_SHADER);
   }
 
-  static Shader createGeometryShader(const std::string & fileName)
+  static Shader2 createGeometryShader(const std::string & fileName)
   {
-    return Shader(fileName, GL_GEOMETRY_SHADER);
+    return Shader2(fileName, GL_GEOMETRY_SHADER);
   }
 
-  static Shader createTessalationControlShader(const std::string & fileName)
+  static Shader2 createTessalationControlShader(const std::string & fileName)
   {
-    return Shader(fileName, GL_TESS_CONTROL_SHADER);
+    return Shader2(fileName, GL_TESS_CONTROL_SHADER);
   }
 
-  static Shader createTessalationEvaluationShader(const std::string & fileName)
+  static Shader2 createTessalationEvaluationShader(const std::string & fileName)
   {
-    return Shader(fileName, GL_TESS_EVALUATION_SHADER);
+    return Shader2(fileName, GL_TESS_EVALUATION_SHADER);
   }
 
-  static Shader createComputeShader(const std::string & fileName)
+  static Shader2 createComputeShader(const std::string & fileName)
   {
-    return Shader(fileName, GL_COMPUTE_SHADER);
+    return Shader2(fileName, GL_COMPUTE_SHADER);
   }
 
   void clear() const{glDeleteShader(shaderId);}
@@ -49,7 +57,7 @@ public:
   GLenum getType() const {return type;}
 };
 
-Shader::Shader(const std::string & fileName, GLenum t) : type(t)
+Shader2::Shader2(const std::string & fileName, GLenum t) : type(t)
 {
 	std::string source = getSource(fileName);
 	const char* data = source.c_str();
@@ -63,7 +71,7 @@ Shader::Shader(const std::string & fileName, GLenum t) : type(t)
 		throw std::runtime_error(getCompileMessageErrorAndClear());
 }
 
-std::string Shader::getSource(const std::string & fileName) const
+std::string Shader2::getSource(const std::string & fileName) const
 {
 	std::ifstream file(fileName, std::ios::binary);
 	if (!file.is_open())
@@ -77,7 +85,7 @@ std::string Shader::getSource(const std::string & fileName) const
 	return stream.str();
 }
 
-std::string Shader::getCompileMessageErrorAndClear() const
+std::string Shader2::getCompileMessageErrorAndClear() const
 {
 	int length;
 	glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &length);

@@ -18,7 +18,7 @@ void TextureLoader::loadTexture(unsigned & textureId, const std::string & fileNa
 	if (!data)
 	{
 		stbi_image_free(data);
-		throw std::runtime_error(std::string("Failed to load texture from file: " + fileName + "."));
+		out("Failed to load texture from file: " << fileName << ".");
 	}
 
 	GLenum format = getFormat(nrChannels);

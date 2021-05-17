@@ -2,42 +2,43 @@
 #define PROGRAM_HPP 1
 
 #include "intermediary.h"
-
+#include "Shader.hpp"
+#define _CRT_SECURE_NO_WARNINGS // because printf is "too dangerous"
 class Program
 {
-  unsigned programId = 0;
-  unsigned * amount;
+	unsigned programId = 0;
+	unsigned * amount; // number of shader programs
 
-  std::string getLinkMessageErrorAndClear() const;
-  unsigned getUniformId(const char * name) const;
+	std::string getLinkMessageErrorAndClear() const;
+	unsigned getUniformId(const char * name) const;
 
-  void swap(const Program & program);
-  void clear();
+	void swap(const Program & program);
+	void clear();
 
 public:
-  Program();
-  Program(const Program & program);
-  Program & operator=(const Program & program);
-  Program(const Shader & vertex, const Shader & fragment);
-  Program(const std::string & vertFileName, const std::string & fragFileName);
-  ~Program();
+	Program();
+	Program(const Program & program);
+	Program & operator=(const Program & program);
+	Program(const Shader2 & vertex, const Shader2 & fragment);
+	Program(const std::string & vertFileName, const std::string & fragFileName);
+	~Program();
 
-  void create();
-  void link() const;
-  void attachShader(const Shader & shader) const;
+	void create();
+	void link() const;
+	void attachShader(const Shader2 & shader) const;
 
-  void use() const {glUseProgram(programId);}
+	void use() const { glUseProgram(programId); }
 
-  void setInt(const char * name, int i) const;
-  void setFloat(const char * name, float f) const;
-  void setVec2(const char * name, const glm::vec2 & vec) const;
-  void setVec3(const char * name, const glm::vec3 & vec) const;
-  void setVec4(const char * name, const glm::vec4 & vec) const;
-  void setMat2(const char * name, const glm::mat2 & mat) const;
-  void setMat3(const char * name, const glm::mat3 & mat) const;
-  void setMat4(const char * name, const glm::mat4 & mat) const;
+	void setInt(const char * name, int i) const;
+	void setFloat(const char * name, float f) const;
+	void setVec2(const char * name, const glm::vec2 & vec) const;
+	void setVec3(const char * name, const glm::vec3 & vec) const;
+	void setVec4(const char * name, const glm::vec4 & vec) const;
+	void setMat2(const char * name, const glm::mat2 & mat) const;
+	void setMat3(const char * name, const glm::mat3 & mat) const;
+	void setMat4(const char * name, const glm::mat4 & mat) const;
 
-  unsigned getId() const {return programId;}
+	unsigned getId() const { return programId; }
 };
 
 Program::Program()
@@ -46,7 +47,7 @@ Program::Program()
 	*amount = 1;
 }
 
-Program::Program(const Shader & vertex, const Shader & fragment)
+Program::Program(const Shader2 & vertex, const Shader2 & fragment)
 {
 	programId = glCreateProgram();
 	glAttachShader(programId, vertex.getId());
@@ -61,8 +62,8 @@ Program::Program(const Shader & vertex, const Shader & fragment)
 Program::Program(const std::string & vertFileName, const std::string & fragFileName)
 {
 	programId = glCreateProgram();
-	Shader vertex = Shader::createVertexShader(vertFileName);
-	Shader fragment = Shader::createFragmentShader(fragFileName);
+	Shader2 vertex = Shader2::createVertexShader(vertFileName);
+	Shader2 fragment = Shader2::createFragmentShader(fragFileName);
 	glAttachShader(programId, vertex.getId());
 	glAttachShader(programId, fragment.getId());
 	link();
@@ -128,7 +129,7 @@ void Program::create()
 	programId = glCreateProgram();
 }
 
-void Program::attachShader(const Shader & shader) const
+void Program::attachShader(const Shader2 & shader) const
 {
 	if (programId == 0)
 		throw std::runtime_error("Can't attach shader to empty program");
@@ -164,32 +165,32 @@ void Program::setFloat(const char * name, float f) const
 
 void Program::setVec2(const char * name, const glm::vec2 & vec) const
 {
-	glUniform2fv(getUniformId(name), 1, glm::value_ptr(vec));
+	glUniform2fv(getUniformId(name), 1, (float*)&vec);
 }
 
 void Program::setVec3(const char * name, const glm::vec3 & vec) const
 {
-	glUniform3fv(getUniformId(name), 1, glm::value_ptr(vec));
+	glUniform3fv(getUniformId(name), 1, (float*)&vec);
 }
 
 void Program::setVec4(const char * name, const glm::vec4 & vec) const
 {
-	glUniform4fv(getUniformId(name), 1, glm::value_ptr(vec));
+	glUniform4fv(getUniformId(name), 1, (float*)&vec);
 }
 
 void Program::setMat2(const char * name, const glm::mat2 & mat) const
 {
-	glUniformMatrix2fv(getUniformId(name), 1, GL_FALSE, glm::value_ptr(mat));
+	glUniformMatrix2fv(getUniformId(name), 1, GL_FALSE, (float*)&mat);
 }
 
 void Program::setMat3(const char * name, const glm::mat3 & mat) const
 {
-	glUniformMatrix3fv(getUniformId(name), 1, GL_FALSE, glm::value_ptr(mat));
+	glUniformMatrix3fv(getUniformId(name), 1, GL_FALSE, (float*)&mat);
 }
 
 void Program::setMat4(const char * name, const glm::mat4 & mat) const
 {
-	glUniformMatrix4fv(getUniformId(name), 1, GL_FALSE, glm::value_ptr(mat));
+	glUniformMatrix4fv(getUniformId(name), 1, GL_FALSE, (float*)&mat);
 }
 
 #endif
