@@ -1,26 +1,28 @@
-# Ocean-OpenGL
-#### Simple Ocean OpenGL 4.1 C++
+# OpenGL Ocean Waves
 
-![Ocean surface](ss/ocean.png)
+![Ocean surface](misc/ss/ocean.png)
 
 YouTube video: https://www.youtube.com/watch?v=H5PJNWV3I7M
 
-### How it works?
-This example do not calculate physics but do only simple interpolations between normalmaps, heightmaps. Tessellation allow us to divide plane and apply the heightmaps. Fragment allow us to calculate light so material color.
-For this project I used 14 normalmaps, 14 heightmaps and one texture with color.
+### How it works
+No physics calculations are performed. Instead, we use simple interpolations between normalmaps and heightmaps. Additionally, Tessellation is used to apply the heightmaps.
+This project uses 14 normalmaps, 14 heightmaps, and one texture.
 
-### Input/Control:
+### Controls
 ```
-  R - start rotate camera
-  T - stop rotate camera
+  R - start camera rotation
+  T - stop camera rotation
   ESC - exit
 ```
 
-### Libraries:
-- GLEW library - http://glew.sourceforge.net
-- GLFW library - https://www.glfw.org
-- GLM library - https://glm.g-truc.net
-- STB_IMAGE library - https://github.com/nothings/stb
+### Libraries Used
+- GLEW - http://glew.sourceforge.net
+- GLFW - https://www.glfw.org
+- GLM  - https://glm.g-truc.net
+- STB_IMAGE - https://github.com/nothings/stb
 
-### Requirements:
-- Graphics card that support OpenGL in version 4.1
+### Requirements
+- Graphics card that supports OpenGL version 4.1
+
+### Credits
+ This project is based on https://github.com/stanfortonski/Ocean-OpenGL by stanfortonski
