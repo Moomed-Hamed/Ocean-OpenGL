@@ -9,14 +9,11 @@
 #define SCREEN_HEIGHT 1080
 
 // CONSIDER ADDING IMGUI WIDGETS
-const float    CAM_FOV      = 45.0f;
-const unsigned NUM_TEXTURES = 13;
-const unsigned TESS_LEVEL   = 1;
-const float    DEPTH        = 0.11f;
+#define CAM_FOV 45.f
+#define NUM_TEXTURES 13
 
 float interpolateFactor = 0.0f;
-
-bool rotate = false;
+bool rotate_cam = false;
 
 int main()
 {
@@ -32,7 +29,13 @@ int main()
 
 	mat4 projection = glm::perspective(glm::radians(CAM_FOV), (float)1280.f / (float)720.f, 0.1f, 500.f);
 
-	// --- Create Shader Program
+	float radius = 75.0f;
+
+	float camX = sin(glfwGetTime() * 0.5) * radius;
+	float camZ = cos(glfwGetTime() * 0.5) * radius;
+	viewPos = glm::vec3(camX, 50.0f, camZ);
+
+	// create shader program
 	GLuint shader_program = {};
 	shader_program = glCreateProgram();
 
@@ -58,7 +61,7 @@ int main()
 	glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
 	if (success == NULL) out("ERROR : COULD NOT LINK SHADER PROGRAM!");
 
-	// vertex array for rendering
+	// rendering setup
 	GLuint VAO = 0;
 	GLuint heightMap[NUM_TEXTURES];
 	GLuint normalMap[NUM_TEXTURES];
@@ -83,9 +86,33 @@ int main()
 	GLuint wavesHeightMap;
 
 	glGenTextures(1, &waterTex);
-	loadTexture(waterTex, "assets/textures/water.jpg");
+	glGenTextures(1, &wavesNormalMap);
+	glGenTextures(1, &wavesHeightMap);
+
+	loadTexture(waterTex      , "assets/textures/water.jpg");
 	loadTexture(wavesNormalMap, "assets/textures/wavesNormal.jpg");
 	loadTexture(wavesHeightMap, "assets/textures/wavesHeight.jpg");
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, heightMap[0]);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, heightMap[1]);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, normalMap[0]);
+
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, normalMap[1]);
+
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, waterTex);
+
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, wavesHeightMap);
+
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, wavesNormalMap);
 
 	// set shader uniforms
 	glUseProgram(shader_program);
@@ -94,8 +121,8 @@ int main()
 	set_vec3 (shader_program, "light.diffuse"     , glm::vec3(0.75, 0.75, 0.75));
 	set_vec3 (shader_program, "light.specular"    , glm::vec3(1.0 , 1.0 , 1.0 ));
 	set_float(shader_program, "interpolateFactor" , interpolateFactor);
-	set_float(shader_program, "depth"             , DEPTH);
-	set_int(shader_program, "tessLevel"         , TESS_LEVEL);
+	set_float(shader_program, "depth"             , 0.11f);
+	set_int  (shader_program, "tessLevel"         , 1);
 
 	set_int(shader_program, "heightMap1"    , 0);
 	set_int(shader_program, "heightMap2"    , 1);
@@ -104,12 +131,6 @@ int main()
 	set_int(shader_program, "water"         , 4);
 	set_int(shader_program, "wavesHeightMap", 5);
 	set_int(shader_program, "wavesNormalMap", 6);
-
-	float radius = 75.0f;
-
-	float camX = sin(glfwGetTime() * 0.5) * radius;
-	float camZ = cos(glfwGetTime() * 0.5) * radius;
-	viewPos = glm::vec3(camX, 50.0f, camZ);
 
 	// frame timer
 	float frame_time = 1.f / 60;
@@ -128,14 +149,14 @@ int main()
 		if (keys.ESC.is_pressed) glfwSetWindowShouldClose(window.instance, true);
 		if (keys.P.is_pressed) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		if (keys.O.is_pressed) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		if (keys.R.is_pressed) rotate = true;
-		if (keys.T.is_pressed) rotate = false;
+		if (keys.R.is_pressed) rotate_cam = true;
+		if (keys.T.is_pressed) rotate_cam = false;
 
-		if (rotate)
+		if (rotate_cam)
 		{
 			radius = 60.0f;
-			float camX = sin(glfwGetTime() * 0.5) * radius;
-			float camZ = cos(glfwGetTime() * 0.5) * radius;
+			camX = sin(glfwGetTime() * 0.5) * radius;
+			camZ = cos(glfwGetTime() * 0.5) * radius;
 			viewPos = glm::vec3(camX, 30.0f, camZ);
 		}
 
@@ -149,61 +170,51 @@ int main()
 		set_vec3(shader_program, "viewPos", viewPos);
 
 		// --- rendering the water
-		static uint texture_index = 0;
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, heightMap[texture_index]);
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, heightMap[texture_index + 1]);
-
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, normalMap[texture_index]);
-
-		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, normalMap[texture_index + 1]);
-
-		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_2D, waterTex);
-
-		glActiveTexture(GL_TEXTURE5);
-		glBindTexture(GL_TEXTURE_2D, wavesHeightMap);
-
-		glActiveTexture(GL_TEXTURE6);
-		glBindTexture(GL_TEXTURE_2D, wavesNormalMap);
 
 		// blending(interpolating) between water textures
-		if (interpolateFactor >= 1)
+		interpolateFactor += .25f * frame_time;
+
+		//out(interpolateFactor);
+		if (interpolateFactor >= 1) // reset interpolation & use next texture in sequence
 		{
 			interpolateFactor = 0.0f;
-			if (texture_index + 1 == NUM_TEXTURES - 1)
+
+			static uint texture_index = 0;
+			if (++texture_index == NUM_TEXTURES - 1)
 			{
 				texture_index = 0;
 			}
-			else
-			{
-				++texture_index;
-			}
+
+			out(texture_index << ',' << texture_index + 1);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, heightMap[texture_index]);
+
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, heightMap[texture_index + 1]);
+
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, normalMap[texture_index]);
+
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, normalMap[texture_index + 1]);
 		}
-		else
-		{
-			interpolateFactor += 5.9f * frame_time;
-			set_float(shader_program, "interpolateFactor", interpolateFactor);
-		}
+
+		set_float(shader_program, "interpolateFactor", interpolateFactor);
 
 		static float offset = 0.0f;
 		if (offset >= INT_MAX - 2)
 		{
 			offset = 0;
 		}
-		offset += 0.2 * frame_time;
+		offset += .25 * frame_time;
 		set_float(shader_program, "wavesOffset", offset);
 
 		glBindVertexArray(VAO);
 		glPatchParameteri(GL_PATCH_VERTICES, 4);
 		glDrawArraysInstanced(GL_PATCHES, 0, 4, 64 * 64);
-		glBindVertexArray(0);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		//glBindVertexArray(0);
+		//glBindTexture(GL_TEXTURE_2D, 0);
 
 		glfwPollEvents();
 		glfwSwapBuffers(window.instance);
