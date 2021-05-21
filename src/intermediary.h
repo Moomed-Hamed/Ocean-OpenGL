@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2021 Mohamed Hamed
-#pragma once
 // Intermediary version 16.5.21
+
+#pragma once
 #pragma comment(lib, "winmm")
 #pragma comment(lib, "opengl32")
 #pragma comment(lib, "external/GLEW/glew32s")
@@ -28,7 +29,7 @@
 
 #include <proprietary/mathematics.h> // this is pretty much GLM for now
 
-byte* read_text_file_into_memory(const char* path, uint* file_size)
+byte* read_text_file_into_memory(const char* path)
 {
 	DWORD BytesRead;
 	HANDLE os_file = CreateFile(path, GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -41,7 +42,6 @@ byte* read_text_file_into_memory(const char* path, uint* file_size)
 
 	CloseHandle(os_file);
 
-	*file_size = size.QuadPart;
 	return memory;
 }
 // -- Timers -- // // might be broken idk
