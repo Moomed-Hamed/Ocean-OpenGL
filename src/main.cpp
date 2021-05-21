@@ -232,13 +232,6 @@ int main()
 		frame_start = frame_end;
 	}
 
-	// cleanup
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteTextures(NUM_TEXTURES, heightMap);
-	glDeleteTextures(NUM_TEXTURES, normalMap);
-	glDeleteTextures(1, &waterTex);
-	glDeleteTextures(1, &wavesHeightMap);
-	glDeleteTextures(1, &wavesNormalMap);
-	glfwTerminate();
+	shutdown_window();
 	return 0;
 }

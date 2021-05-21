@@ -1,6 +1,6 @@
 # OpenGL Ocean Waves
 
-![Ocean surface](misc/ss/ocean.png)
+![Ocean surface](assets/misc/ss/ocean.png)
 
 YouTube video: https://www.youtube.com/watch?v=H5PJNWV3I7M
 
