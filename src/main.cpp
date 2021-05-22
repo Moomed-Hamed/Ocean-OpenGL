@@ -12,7 +12,6 @@
 #define CAM_FOV 45.f
 #define NUM_TEXTURES 13
 
-float interpolateFactor = 0.0f;
 bool rotate_cam = false;
 
 int main()
@@ -114,6 +113,9 @@ int main()
 	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, wavesNormalMap);
 
+	static float interpolateFactor = 0.0f;
+	static float offset = 0.0f;
+
 	// set shader uniforms
 	glUseProgram(shader_program);
 	set_vec3 (shader_program, "light.direction"   , glm::vec3(0.0 , -1.0, 0.0 ));
@@ -141,9 +143,6 @@ int main()
 	{
 		update_window(window);
 		update_keyboard(&keys, window);
-
-		static int fix = 0;
-		if (++fix % 2) continue;
 
 		// controls
 		if (keys.ESC.is_pressed) glfwSetWindowShouldClose(window.instance, true);
@@ -185,8 +184,6 @@ int main()
 				texture_index = 0;
 			}
 
-			out(texture_index << ',' << texture_index + 1);
-
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, heightMap[texture_index]);
 
@@ -199,25 +196,18 @@ int main()
 			glActiveTexture(GL_TEXTURE3);
 			glBindTexture(GL_TEXTURE_2D, normalMap[texture_index + 1]);
 		}
-
-		set_float(shader_program, "interpolateFactor", interpolateFactor);
-
-		static float offset = 0.0f;
+		
 		if (offset >= INT_MAX - 2)
 		{
 			offset = 0;
-		}
-		offset += .25 * frame_time;
+		} offset += .25 * frame_time;
+
+		set_float(shader_program, "interpolateFactor", interpolateFactor);
 		set_float(shader_program, "wavesOffset", offset);
 
 		glBindVertexArray(VAO);
 		glPatchParameteri(GL_PATCH_VERTICES, 4);
 		glDrawArraysInstanced(GL_PATCHES, 0, 4, 64 * 64);
-		//glBindVertexArray(0);
-		//glBindTexture(GL_TEXTURE_2D, 0);
-
-		glfwPollEvents();
-		glfwSwapBuffers(window.instance);
 
 		//Frame Time
 		frame_end = get_timestamp();
