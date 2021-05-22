@@ -1,12 +1,7 @@
 #include "rendering.h"
 
-// standard definition
-//#define SCREEN_WIDTH 1280
-//#define SCREEN_HEIGHT 720
-
-// HD
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
+#define SCREEN_WIDTH  1280 // 1920
+#define SCREEN_HEIGHT 720  // 1080
 
 // CONSIDER ADDING IMGUI WIDGETS
 #define CAM_FOV 45.f
@@ -18,21 +13,18 @@ int main()
 {
 	Window window = {};
 	Keyboard keys = {};
+	Mouse mouse = {};
 
 	init_window(&window, SCREEN_WIDTH, SCREEN_HEIGHT, "GL Waves");
 	init_keyboard(&keys);
 
-	glm::mat4 model = glm::scale(glm::mat4(1.0f), glm::vec3(100.0f));
-	glm::vec3 viewPos = glm::vec3(1.0f);
-	glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-	mat4 projection = glm::perspective(glm::radians(CAM_FOV), (float)1280.f / (float)720.f, 0.1f, 500.f);
-
 	float radius = 75.0f;
+	Camera camera = {};
+	camera.position = vec3(sin(glfwGetTime() * 0.5) * radius, 50, cos(glfwGetTime() * 0.5) * radius);
 
-	float camX = sin(glfwGetTime() * 0.5) * radius;
-	float camZ = cos(glfwGetTime() * 0.5) * radius;
-	viewPos = glm::vec3(camX, 50.0f, camZ);
+	mat4 model = glm::scale(mat4(1.0f), vec3(100.0f));
+	mat4 view = glm::lookAt(camera.position, vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 projection = glm::perspective(ToRadians(CAM_FOV), (float)1280.f / (float)720.f, 0.1f, 500.f);
 
 	// create shader program
 	GLuint shader_program = {};
@@ -60,10 +52,10 @@ int main()
 	glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
 	if (success == NULL) out("ERROR : COULD NOT LINK SHADER PROGRAM!");
 
-	// rendering setup
+	// render setup
 	GLuint VAO = 0;
-	GLuint heightMap[NUM_TEXTURES];
-	GLuint normalMap[NUM_TEXTURES];
+	GLuint heightMap[NUM_TEXTURES] = {};
+	GLuint normalMap[NUM_TEXTURES] = {};
 
 	glGenVertexArrays(1, &VAO);
 	glGenTextures(NUM_TEXTURES, heightMap);
@@ -72,12 +64,12 @@ int main()
 	for (int i = 0; i < NUM_TEXTURES; ++i)
 	{
 		char heightmap_filename[256] = {};
-		sprintf(heightmap_filename, "assets/textures/heights/%d.png", i+1);
-		loadTexture(heightMap[i], std::string(heightmap_filename));
+		sprintf(heightmap_filename, "assets/textures/heights/%d.png", i + 1);
+		load_texture(heightMap[i], std::string(heightmap_filename));
 
 		char normalmap_filename[256] = {};
-		sprintf(normalmap_filename, "assets/textures/normals/%d.png", i+1);
-		loadTexture(normalMap[i], std::string(normalmap_filename));
+		sprintf(normalmap_filename, "assets/textures/normals/%d.png", i + 1);
+		load_texture(normalMap[i], std::string(normalmap_filename));
 	}
 
 	GLuint waterTex;
@@ -88,9 +80,9 @@ int main()
 	glGenTextures(1, &wavesNormalMap);
 	glGenTextures(1, &wavesHeightMap);
 
-	loadTexture(waterTex      , "assets/textures/water.jpg");
-	loadTexture(wavesNormalMap, "assets/textures/wavesNormal.jpg");
-	loadTexture(wavesHeightMap, "assets/textures/wavesHeight.jpg");
+	load_texture(waterTex      , "assets/textures/water.jpg");
+	load_texture(wavesNormalMap, "assets/textures/wavesNormal.jpg");
+	load_texture(wavesHeightMap, "assets/textures/wavesHeight.jpg");
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, heightMap[0]);
@@ -118,13 +110,13 @@ int main()
 
 	// set shader uniforms
 	glUseProgram(shader_program);
-	set_vec3 (shader_program, "light.direction"   , glm::vec3(0.0 , -1.0, 0.0 ));
-	set_vec3 (shader_program, "light.ambient"     , glm::vec3(0.15, 0.15, 0.15));
-	set_vec3 (shader_program, "light.diffuse"     , glm::vec3(0.75, 0.75, 0.75));
-	set_vec3 (shader_program, "light.specular"    , glm::vec3(1.0 , 1.0 , 1.0 ));
-	set_float(shader_program, "interpolateFactor" , interpolateFactor);
-	set_float(shader_program, "depth"             , 0.11f);
-	set_int  (shader_program, "tessLevel"         , 1);
+	set_vec3 (shader_program, "light.direction"  , vec3(0.0 , -1.0, 0.0 ));
+	set_vec3 (shader_program, "light.ambient"    , vec3(0.15, 0.15, 0.15));
+	set_vec3 (shader_program, "light.diffuse"    , vec3(0.75, 0.75, 0.75));
+	set_vec3 (shader_program, "light.specular"   , vec3(1.0 , 1.0 , 1.0 ));
+	set_float(shader_program, "interpolateFactor", interpolateFactor);
+	set_float(shader_program, "depth"            , 0.11f);
+	set_int  (shader_program, "tessLevel"        , 1);
 
 	set_int(shader_program, "heightMap1"    , 0);
 	set_int(shader_program, "heightMap2"    , 1);
@@ -143,6 +135,9 @@ int main()
 	{
 		update_window(window);
 		update_keyboard(&keys, window);
+		update_mouse(&mouse, window);
+
+		camera_update_dir(&camera, mouse.dx, mouse.dy);
 
 		// controls
 		if (keys.ESC.is_pressed) glfwSetWindowShouldClose(window.instance, true);
@@ -153,28 +148,14 @@ int main()
 
 		if (rotate_cam)
 		{
-			radius = 60.0f;
-			camX = sin(glfwGetTime() * 0.5) * radius;
-			camZ = cos(glfwGetTime() * 0.5) * radius;
-			viewPos = glm::vec3(camX, 30.0f, camZ);
+			camera.position = vec3(sin(glfwGetTime() * 0.5) * radius, 50, cos(glfwGetTime() * 0.5) * radius);
 		}
 
-		view = glm::lookAt(viewPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glUseProgram(shader_program);
-		set_mat4(shader_program, "model"  , model);
-		set_mat4(shader_program, "mvp"    , projection * view * model);
-		set_vec3(shader_program, "viewPos", viewPos);
-
-		// --- rendering the water
+		view = glm::lookAt(camera.position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 		// blending(interpolating) between water textures
-		interpolateFactor += .25f * frame_time;
-
-		//out(interpolateFactor);
-		if (interpolateFactor >= 1) // reset interpolation & use next texture in sequence
+		interpolateFactor += 1.5f * frame_time;
+		if (interpolateFactor > 1) // reset interpolation & use next texture in sequence
 		{
 			interpolateFactor = 0.0f;
 
@@ -197,11 +178,20 @@ int main()
 			glBindTexture(GL_TEXTURE_2D, normalMap[texture_index + 1]);
 		}
 		
-		if (offset >= INT_MAX - 2)
+		offset += .25 * frame_time;
+		if (offset >= 1000000)
 		{
 			offset = 0;
-		} offset += .25 * frame_time;
+		}
 
+		// --- rendering water
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glUseProgram(shader_program);
+		set_mat4 (shader_program, "model", model);
+		set_mat4 (shader_program, "mvp", projection * view * model);
+		set_vec3 (shader_program, "viewPos", camera.position);
 		set_float(shader_program, "interpolateFactor", interpolateFactor);
 		set_float(shader_program, "wavesOffset", offset);
 

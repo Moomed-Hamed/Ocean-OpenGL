@@ -7,23 +7,20 @@ void set_mat4(GLuint shader_id, const char* name, mat4 value)
 {
 	glUniformMatrix4fv(glGetUniformLocation(shader_id, name), 1, GL_FALSE, (float*)&value);
 }
-
 void set_int(GLuint shader_id, const char * name, int value)
 {
 	glUniform1i(glGetUniformLocation(shader_id, name), value);
 }
-
 void set_float(GLuint shader_id, const char* name, float value)
 {
 	glUniform1f(glGetUniformLocation(shader_id, name), value);
 }
-
 void set_vec3(GLuint shader_id, const char* name, vec3 value)
 {
 	glUniform3f(glGetUniformLocation(shader_id, name), value.x, value.y, value.z);
 }
 
-void loadTexture(unsigned & textureId, const std::string & fileName)
+void load_texture(unsigned & textureId, const std::string & fileName)
 {
 	int width, height, nrChannels;
 	unsigned char* data = stbi_load(fileName.c_str(), &width, &height, &nrChannels, 0);
@@ -33,7 +30,6 @@ void loadTexture(unsigned & textureId, const std::string & fileName)
 		out("Failed to load texture from file: " << fileName << ".");
 	}
 
-	// get texture format
 	GLenum format = 0;
 	switch (nrChannels)
 	{

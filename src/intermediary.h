@@ -24,7 +24,6 @@
 #define stop std::cin.get()
 #define print printf
 #define printvec(vec) printf("%f %f %f\n", vec.x, vec.y, vec.z)
-#define force_inline __forceinline // may only work with MSVC
 #define Alloc(type, count) (type *)calloc(count, sizeof(type))
 
 #include <proprietary/mathematics.h> // this is pretty much GLM for now
